@@ -31,8 +31,8 @@ IMAGE_SIZE = (480, 640)
 
 # Global constants describing the Statefarm data set.
 NUM_CLASSES = 10
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 1000
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 17
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10
 
 
 def read_statefarm(filename_queue):
@@ -127,12 +127,15 @@ def distorted_inputs(data_dir, batch_size):
   reshaped_image = tf.cast(read_input.uint8image, tf.float32)
 
   # Randomly crop a [height, width] section of the image.
-  # height = 24
-  # width = 24
+  # height = 200
+  # width = 200
   # distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
 
   # Subtract off the mean and divide by the variance of the pixels.
   float_image = tf.image.per_image_whitening(reshaped_image)
+
+  # Convert to grayscale
+  bw_image = tf.image.rgb_to_grayscale(float_image)
 
   # Ensure that the random shuffling has good mixing properties.
   min_fraction_of_examples_in_queue = 0.4
@@ -142,7 +145,7 @@ def distorted_inputs(data_dir, batch_size):
          'This will take a few minutes.' % min_queue_examples)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(float_image, read_input.label,
+  return _generate_image_and_label_batch(bw_image, read_input.label,
                                          min_queue_examples, batch_size)
 
 
