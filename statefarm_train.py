@@ -10,6 +10,7 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import statefarm
+import sys
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -131,6 +132,7 @@ def train():
                       'sec/batch)')
         print (format_str % (datetime.now(), step, loss_value,
                              examples_per_sec, sec_per_batch))
+        sys.stdout.flush()
 
       # Evaluate model on training set here
       # if step % 100 == 0:

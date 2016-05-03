@@ -297,28 +297,28 @@ def train(total_loss, global_step):
 
   # Compute gradients.
   with tf.control_dependencies([loss_averages_op]):
-    opt = tf.train.AdamOptimizer(lr)
+    opt = tf.train.GradientDescentOptimizer(lr)
     grads = opt.compute_gradients(total_loss)
 
   # Apply gradients.
   apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
 
-  # Add histograms for trainable variables.
-  for var in tf.trainable_variables():
-    tf.histogram_summary(var.op.name, var)
+  # # Add histograms for trainable variables.
+  # for var in tf.trainable_variables():
+  #   tf.histogram_summary(var.op.name, var)
 
-  # Add histograms for gradients.
-  for grad, var in grads:
-    if grad is not None:
-      tf.histogram_summary(var.op.name + '/gradients', grad)
+  # # Add histograms for gradients.
+  # for grad, var in grads:
+  #   if grad is not None:
+  #     tf.histogram_summary(var.op.name + '/gradients', grad)
 
-  # Track the moving averages of all trainable variables.
-  variable_averages = tf.train.ExponentialMovingAverage(
-      MOVING_AVERAGE_DECAY, global_step)
-  variables_averages_op = variable_averages.apply(tf.trainable_variables())
+  # # Track the moving averages of all trainable variables.
+  # variable_averages = tf.train.ExponentialMovingAverage(
+  #     MOVING_AVERAGE_DECAY, global_step)
+  # variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
-  with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
-    train_op = tf.no_op(name='train')
+  #with tf.control_dependencies([apply_gradient_op, variables_averages_op]):
+  train_op = tf.no_op(name='train')
 
   return train_op
 
