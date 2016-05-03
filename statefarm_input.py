@@ -105,7 +105,7 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
   tf.image_summary('images', images)
   duration = time.time() - start_time
 
-  print('Batch generated! Elapsed time: %.2f', duration)
+  print('Batch generated! Elapsed time: %.2f' % duration)
 
   return images, tf.reshape(label_batch, [batch_size])
 
