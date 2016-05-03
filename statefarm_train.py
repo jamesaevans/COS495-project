@@ -26,7 +26,8 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
 
 
 def placeholder_inputs(batch_size):
-  images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+  images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, IMAGE_SIZE[0], IMAGE_SIZE[1], 1))
+  # images_placeholder = tf.placeholder(tf.float32, shape=(batch_size, 200, 200, 3))
   labels_placeholder = tf.placeholder(tf.int32, shape=(batch_size))
   return images_placeholder, labels_placeholder
 
