@@ -20,7 +20,7 @@ from __future__ import print_function
 from PIL import Image
 
 import os
-
+import time
 from scipy import misc
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -92,7 +92,8 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
   """
   # Create a queue that shuffles the examples, and then
   # read 'batch_size' images + labels from the example queue.
-  num_preprocess_threads = 16
+  start_time = time.time()
+  num_preprocess_threads = 4 # used 4 for the cluster
   images, label_batch = tf.train.shuffle_batch(
       [image, label],
       batch_size=batch_size,
@@ -102,6 +103,9 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
 
   # Display the training images in the visualizer.
   tf.image_summary('images', images)
+  duration = time.time() - start_time
+
+  print('Batch generated! Elapsed time: %.2f', duration)
 
   return images, tf.reshape(label_batch, [batch_size])
 
