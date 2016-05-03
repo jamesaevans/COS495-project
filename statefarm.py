@@ -29,9 +29,9 @@ import statefarm_input as statefarm_input
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 24,
+tf.app.flags.DEFINE_integer('batch_size', 19,
                             """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_string('data_dir', '/tmp/statefarm_data',
+tf.app.flags.DEFINE_string('data_dir', './tmp/statefarm_data',
                            """Path to the Statefarm data directory.""")
 
 # Global constants describing the Statefarm data set.
