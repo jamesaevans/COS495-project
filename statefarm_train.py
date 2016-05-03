@@ -113,9 +113,11 @@ def train():
     for step in xrange(FLAGS.max_steps):
       start_time = time.time()
       images_val, labels_val = sess.run([images_train, labels_train])
+      print ('Loading images... Elapsed time: %.2f' % time.time() - start_time)
       feed_dict = fill_feed_dict(images_placeholder, labels_placeholder,
                                  images_val, labels_val)
       _, loss_value = sess.run([train_op, loss], feed_dict=feed_dict)
+      print ('Training step... Elapsed time: %.2f' % time.time() - start_time)
       duration = time.time() - start_time
 
       assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
