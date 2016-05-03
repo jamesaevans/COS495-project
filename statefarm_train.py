@@ -109,7 +109,7 @@ def train():
 
     # summary_writer = tf.train.SummaryWriter(FLAGS.train_dir,
     #                                        graph_def=sess.graph_def)
-
+    print('Graph Initialized, Starting to train...')
     for step in xrange(FLAGS.max_steps):
       start_time = time.time()
       images_val, labels_val = sess.run([images_train, labels_train])
