@@ -48,7 +48,7 @@ def do_eval(sess,
 
   # And run one epoch of eval.
   true_count = 0  # Counts the number of correct predictions.
-  steps_per_epoch = 2569 // FLAGS.batch_size
+  steps_per_epoch = 2560 // FLAGS.batch_size
   num_examples = 2560
   for step in xrange(steps_per_epoch):
     images_val, labels_val = sess.run([images, labels])
