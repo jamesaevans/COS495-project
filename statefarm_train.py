@@ -16,7 +16,7 @@ FLAGS = tf.app.flags.FLAGS
 import statefarm_input
 IMAGE_SIZE = statefarm_input.IMAGE_SIZE
 
-tf.app.flags.DEFINE_string('train_dir', '/tmp/statefarm_train',
+tf.app.flags.DEFINE_string('train_dir', './tmp/statefarm_train',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 tf.app.flags.DEFINE_integer('max_steps', 1000000,
@@ -95,7 +95,7 @@ def train(inputfile, validatefile):
     saver = tf.train.Saver(tf.all_variables())
 
     # Build the summary operation based on the TF collection of Summaries.
-    summary_op = tf.merge_all_summaries()
+    # summary_op = tf.merge_all_summaries()
 
     # Build a Graph that evaluates the model on a set of testing/validation
     eval_op = statefarm.evaluation(logits, labels_placeholder)
@@ -111,8 +111,8 @@ def train(inputfile, validatefile):
     # Start the queue runners.
     tf.train.start_queue_runners(sess=sess)
 
-    summary_writer = tf.train.SummaryWriter(FLAGS.train_dir,
-                                            graph_def=sess.graph_def)
+    # summary_writer = tf.train.SummaryWriter(FLAGS.train_dir,
+    #                                        graph_def=sess.graph_def)
 
     for step in xrange(FLAGS.max_steps):
       start_time = time.time()
