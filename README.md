@@ -5,7 +5,7 @@ To run network, create two files that contain (a) training images and (b) valida
 filepathToImage label
 ```
 
-The run 
+Then run 
 
 ```
 python statefarm_train.py <train.txt> <validate.txt>
