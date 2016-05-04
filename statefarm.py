@@ -29,7 +29,7 @@ import statefarm_input as statefarm_input
 FLAGS = tf.app.flags.FLAGS
 
 # Basic model parameters.
-tf.app.flags.DEFINE_integer('batch_size', 24,
+tf.app.flags.DEFINE_integer('batch_size', 128,
                             """Number of images to process in a batch.""")
 tf.app.flags.DEFINE_string('data_dir', '/tmp/statefarm_data',
                            """Path to the Statefarm data directory.""")
@@ -104,7 +104,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   return var
 
 
-def distorted_inputs():
+def distorted_inputs(inputfile):
   """Construct distorted input for Statefarm training using the Reader ops.
   Returns:
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
@@ -116,14 +116,24 @@ def distorted_inputs():
     raise ValueError('Please supply a data_dir')
   data_dir = os.path.join(FLAGS.data_dir, 'statefarm-10-batches-bin')
   return statefarm_input.distorted_inputs(data_dir=data_dir,
-                                        batch_size=FLAGS.batch_size)
+                                        batch_size=FLAGS.batch_size,
+                                        inputfile=inputfile)
 
-def testing_inputs():
+def testing_inputs(validatefile):
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
   data_dir = os.path.join(FLAGS.data_dir, 'statefarm-batches-bin')
   return statefarm_input.testing_inputs(data_dir=data_dir,
-                                        batch_size=FLAGS.batch_size)
+                                        batch_size=FLAGS.batch_size,
+                                        validatefile = validatefile)
+
+def unlabeled_inputs(testfiles):
+  if not FLAGS.data_dir:
+    raise ValueError('Please supply a data_dir')
+  data_dir = os.path.join(FLAGS.data_dir, 'statefarm-batches-bin')
+  return statefarm_input.unlabeled_inputs(data_dir=data_dir,
+                                        batch_size=FLAGS.batch_size,
+                                        testfiles=testfiles)
 
 def inputs(eval_data):
   """Construct input for Statefarm evaluation using the Reader ops.
@@ -138,8 +148,8 @@ def inputs(eval_data):
   if not FLAGS.data_dir:
     raise ValueError('Please supply a data_dir')
   data_dir = os.path.join(FLAGS.data_dir, 'statefarm-batches-bin')
-  return statefarm_input.inputs(eval_data=eval_data, data_dir=data_dir,
-                              batch_size=FLAGS.batch_size)
+  if eval_data:
+    return statefarm_input.testing_inputs(data_dir=data_dir, batch_size=FLAGS.batch_size)
 
 
 def inference(images):
@@ -221,6 +231,8 @@ def inference(images):
 
   return softmax_linear
 
+def predict(logits):
+  return tf.nn.softmax(logits)
 
 def loss(logits, labels):
   """Add L2Loss to all the trainable variables.
@@ -323,5 +335,6 @@ def train(total_loss, global_step):
   return train_op
 
 def evaluation(logits, labels):
-  correct = tf.nn.in_top_k(logits, labels, 1)
-  return tf.reduce_sum(tf.cast(correct, tf.int32))
+  correct_1 = tf.nn.in_top_k(logits, labels, 1)
+  correct_2 = tf.nn.in_top_k(logits, labels, 2)
+  return tf.reduce_sum(tf.cast(correct_1, tf.int32)), tf.reduce_sum(tf.cast(correct_2, tf.int32))

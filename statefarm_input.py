@@ -27,12 +27,12 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 # Process images of this size. 
-IMAGE_SIZE = (480, 640)
+IMAGE_SIZE = (75, 100)
 
 # Global constants describing the Statefarm data set.
 NUM_CLASSES = 10
-NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10
-NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10
+NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 22296
+NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 128
 
 
 def read_statefarm(filename_queue):
@@ -76,6 +76,31 @@ def read_statefarm(filename_queue):
 
   return result
 
+def read_statefarm_unlabeled(filename_queue):
+  class StatefarmRecord(object):
+    pass
+  result = StatefarmRecord()
+
+  # Read a record, getting filenames from the filename_queue.  
+  result.key, _ = tf.decode_csv(filename_queue.dequeue(), [[""], [""]], " ")
+
+  # Extract raw JPG data as a string
+  raw_contents = tf.read_file(result.key)
+
+  # Decode raw data as a PNG. Defaults to uint8 encoding.
+  result.uint8image = tf.image.decode_jpeg(raw_contents)
+
+  # TENSORFLOW BUG: image shape not statically determined, so force
+  # it to have correct Statefarm dimensions
+  result.uint8image.set_shape((IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
+
+  # Kind of hacky, but set a label so we can use the same structure
+  # THIS SHOULD ALWAYS BE IGNORED DURING COMPUTATION, since we are
+  # dealing with unlabaled data
+  result.label = tf.cast(tf.string_to_number("0"), tf.int32)
+
+  return result
+
 
 def _generate_image_and_label_batch(image, label, min_queue_examples,
                                     batch_size):
@@ -105,8 +130,25 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
 
   return images, tf.reshape(label_batch, [batch_size])
 
+def _generate_image_and_filename_batch(image, filename, min_queue_examples,
+                                    batch_size):
+  # Create a queue that shuffles the examples, and then
+  # read 'batch_size' images + filenames from the example queue.
+  num_preprocess_threads = 16
+  images, label_batch = tf.train.shuffle_batch(
+      [image, filename],
+      batch_size=batch_size,
+      num_threads=num_preprocess_threads,
+      capacity=min_queue_examples + 3 * batch_size,
+      min_after_dequeue=min_queue_examples)
 
-def distorted_inputs(data_dir, batch_size):
+  # Display the training images in the visualizer.
+  tf.image_summary('images', images)
+
+  return images, tf.reshape(label_batch, [batch_size])
+
+
+def distorted_inputs(data_dir, batch_size, inputfile):
   """Construct distorted input for Statefarm training using the Reader ops.
   Args:
     data_dir: Path to the Statefarm data directory.
@@ -115,7 +157,7 @@ def distorted_inputs(data_dir, batch_size):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  with open('inputs.txt') as f:
+  with open(inputfile) as f:
     delimmed = f.readlines()
   delimmed = [l.strip('\n') for l in delimmed]
 
@@ -149,7 +191,7 @@ def distorted_inputs(data_dir, batch_size):
                                          min_queue_examples, batch_size)
 
 
-def testing_inputs(data_dir, batch_size):
+def testing_inputs(data_dir, batch_size, validatefile):
   """Construct input for Statefarm evaluation using the Reader ops.
   Args:
     eval_data: bool, indicating if one should use the train or eval data set.
@@ -159,7 +201,7 @@ def testing_inputs(data_dir, batch_size):
     images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
     labels: Labels. 1D tensor of [batch_size] size.
   """
-  with open('testing.txt') as f:
+  with open(validatefile) as f:
     delimmed = f.readlines()
   delimmed = [l.strip('\n') for l in delimmed]
 
@@ -172,13 +214,16 @@ def testing_inputs(data_dir, batch_size):
 
   # Image processing for evaluation.
   # Crop the central [height, width] of the image.
-  height = 24
-  width = 24
-  resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
-                                                         width, height)
+  # height = 24
+  # width = 24
+  # resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
+  #                                                        width, height)
 
   # Subtract off the mean and divide by the variance of the pixels.
-  float_image = tf.image.per_image_whitening(resized_image)
+  float_image = tf.image.per_image_whitening(reshaped_image)
+
+  # Convert to grayscale
+  bw_image = tf.image.rgb_to_grayscale(float_image)
 
   # Ensure that the random shuffling has good mixing properties.
   min_fraction_of_examples_in_queue = 0.4
@@ -186,5 +231,32 @@ def testing_inputs(data_dir, batch_size):
                            min_fraction_of_examples_in_queue)
 
   # Generate a batch of images and labels by building up a queue of examples.
-  return _generate_image_and_label_batch(float_image, read_input.label,
+  return _generate_image_and_label_batch(bw_image, read_input.label,
+                                         min_queue_examples, batch_size)
+
+def unlabeled_inputs(data_dir, batch_size, testfiles):
+  with open(testfiles) as f:
+    delimmed = f.readlines()
+  delimmed = [l.strip('\n') for l in delimmed]
+
+  # Create a queue that produces the filename, label pairs to read.
+  delimmed_queue = tf.train.string_input_producer(delimmed)
+
+  # Read examples from files in the filename queue.
+  read_input = read_statefarm_unlabeled(delimmed_queue)
+  reshaped_image = tf.cast(read_input.uint8image, tf.float32)
+
+  # Subtract off the mean and divide by the variance of the pixels.
+  float_image = tf.image.per_image_whitening(reshaped_image)
+
+  # Convert to grayscale
+  bw_image = tf.image.rgb_to_grayscale(float_image)
+
+  # Ensure that the random shuffling has good mixing properties.
+  min_fraction_of_examples_in_queue = 0.4
+  min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_EVAL *
+                           min_fraction_of_examples_in_queue)
+
+  # Generate a batch of images and labels by building up a queue of examples.
+  return _generate_image_and_filename_batch(bw_image, read_input.key,
                                          min_queue_examples, batch_size)
