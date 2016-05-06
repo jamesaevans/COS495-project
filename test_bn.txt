@@ -1,0 +1,5 @@
+Filling queue with 8918 Statefarm images before starting to train. This will take a few minutes.
+2016-05-06 11:47:16.378245: step 0, loss = 118.00 (6.2 examples/sec; 20.497 sec/batch)
+Validation: Num examples: 128  Num correct: 0  Precision @ 1: 0.0000  Precision @ 2: 0.0000
+2016-05-06 11:50:26.973459: step 10, loss = 116.90 (6.7 examples/sec; 19.153 sec/batch)
+2016-05-06 11:53:46.823505: step 20, loss = 115.01 (6.7 examples/sec; 19.013 sec/batch)

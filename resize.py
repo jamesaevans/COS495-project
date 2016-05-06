@@ -2,7 +2,7 @@ from PIL import Image, ImageFilter
 import os, sys, glob
 
 # Change this according to location of project
-BASE_DIR = '/Users/jaevans/Desktop/COS495-project'
+BASE_DIR = '/Users/Michael/Documents/School/4_Senior_Spring/Cos495/Final_Project/COS495-project'
 os.chdir(BASE_DIR)
 
 def resizeLabeledImages(folder, size):

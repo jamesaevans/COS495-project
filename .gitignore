@@ -1,2 +1,6 @@
 ./imgs
+./small_imgs
+input.txt
+validate.txt
 *.zip
+*.pyc
