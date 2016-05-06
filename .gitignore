@@ -1,6 +1,4 @@
-./imgs
-./small_imgs
-input.txt
-validate.txt
+imgs
+small_imgs
 *.zip
 *.pyc
