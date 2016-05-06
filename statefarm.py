@@ -23,6 +23,7 @@ import tarfile
 
 from six.moves import urllib
 import tensorflow as tf
+from tensorflow.python import control_flow_ops
 
 import statefarm_input as statefarm_input
 
@@ -45,7 +46,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = statefarm_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVA
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.2       # Initial learning rate.
+INITIAL_LEARNING_RATE = 0.12      # Initial learning rate.
 
 # If a model is trained with multiple GPU's prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -151,6 +152,35 @@ def inputs(eval_data):
   if eval_data:
     return statefarm_input.testing_inputs(data_dir=data_dir, batch_size=FLAGS.batch_size)
 
+def batch_norm(x, n_out, scope='bn', affine=True):
+    """
+    Batch normalization on convolutional maps.
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        scope:       string, variable scope
+        affine:      whether to affine-transform outputs
+    Return:
+        normed:      batch-normalized maps
+    """
+    with tf.variable_scope(scope):
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
+            name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
+            name='gamma', trainable=affine)
+
+        batch_mean, batch_var = tf.nn.moments(x, [0,1,2], name='moments')
+        ema = tf.train.ExponentialMovingAverage(decay=0.9)
+        ema_apply_op = ema.apply([batch_mean, batch_var])
+        ema_mean, ema_var = ema.average(batch_mean), ema.average(batch_var)
+        def mean_var_with_update():
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+        mean, var = mean_var_with_update()
+        normed = tf.nn.batch_norm_with_global_normalization(x, mean, var,
+            beta, gamma, 1e-3, affine)
+    return normed
+
 def inference(images):
   """Build the Statefarm model.
   Args:
@@ -168,46 +198,33 @@ def inference(images):
     kernel = _variable_with_weight_decay('weights', shape=[5, 5, 1, 64],
                                          stddev=1e-4, wd=0.0)
     conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
-    
-    batch_mean1, batch_var1 = tf.nn.moments(conv,[0])
-    conv_hat = (conv - batch_mean1) / tf.sqrt(batch_var1 + 1e-2)
-    scale1 = tf.Variable(tf.ones([64]))
-    beta1 = tf.Variable(tf.zeros([64]))
-    norm1 = scale1 * conv_hat + beta1
-    
-    conv1 = tf.nn.relu(norm1, name=scope.name)
+
+    # bn1 - add batch normalization before nonlinearity
+    bn1 = batch_norm(conv, 64)
+
+    conv1 = tf.nn.relu(bn1, name=scope.name)
     _activation_summary(conv1)
 
   # pool1
   pool1 = tf.nn.max_pool(conv1, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1],
                          padding='SAME', name='pool1')
-  # norm1
-  # norm1 = tf.nn.lrn(pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
-  #                   name='norm1')
+
 
   # conv2
   with tf.variable_scope('conv2') as scope:
     kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
                                          stddev=1e-4, wd=0.0)
-    conv = tf.nn.conv2d(norm1, kernel, [1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.conv2d(pool1, kernel, [1, 1, 1, 1], padding='SAME')
 
-    batch_mean2, batch_var2 = tf.nn.moments(conv,[0])
-    conv_hat = (conv - batch_mean2) / tf.sqrt(batch_var2 + 1e-2)
-    scale2 = tf.Variable(tf.ones([64]))
-    beta2 = tf.Variable(tf.zeros([64]))
-    norm2 = scale2 * conv_hat + beta2
-
-    conv2 = tf.nn.relu(norm2, name=scope.name)
+    # bn2 - add batch normalization before nonlinearity
+    bn2 = batch_norm(conv, 64)
+    
+    conv2 = tf.nn.relu(bn2, name=scope.name)
     _activation_summary(conv2)
 
   # pool2
   pool2 = tf.nn.max_pool(conv2, ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1], padding='SAME', name='pool2')
-
-  # norm2
-  # norm2 = tf.nn.lrn(conv2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75,
-  #                   name='norm2')
-
 
   # local3
   with tf.variable_scope('local3') as scope:
