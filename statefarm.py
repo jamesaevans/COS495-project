@@ -46,7 +46,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = statefarm_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVA
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
-INITIAL_LEARNING_RATE = 0.15      # Initial learning rate.
+INITIAL_LEARNING_RATE = 0.13      # Initial learning rate.
 
 # If a model is trained with multiple GPU's prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -226,13 +226,61 @@ def inference(images):
   pool2 = tf.nn.max_pool(conv2, ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1], padding='SAME', name='pool2')
 
+  # conv3
+  with tf.variable_scope('conv3') as scope:
+    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
+                                         stddev=1e-4, wd=0.0)
+    conv = tf.nn.conv2d(pool2, kernel, [1, 1, 1, 1], padding='SAME')
+
+    # bn3 - add batch normalization before nonlinearity
+    bn3 = batch_norm(conv, 64)
+    
+    conv3 = tf.nn.relu(bn3, name=scope.name)
+    _activation_summary(conv3)
+
+  # pool4
+  pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+
+  # conv4
+  with tf.variable_scope('conv4') as scope:
+    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
+                                         stddev=1e-4, wd=0.0)
+    conv = tf.nn.conv2d(pool3, kernel, [1, 1, 1, 1], padding='SAME')
+
+    # bn4 - add batch normalization before nonlinearity
+    bn4 = batch_norm(conv, 64)
+    
+    conv4 = tf.nn.relu(bn4, name=scope.name)
+    _activation_summary(conv4)
+
+  # pool4
+  pool4 = tf.nn.max_pool(conv4, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+
+  # conv5
+  with tf.variable_scope('conv5') as scope:
+    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
+                                         stddev=1e-4, wd=0.0)
+    conv = tf.nn.conv2d(pool4, kernel, [1, 1, 1, 1], padding='SAME')
+
+    # bn5 - add batch normalization before nonlinearity
+    bn5 = batch_norm(conv, 64)
+    
+    conv5 = tf.nn.relu(bn5, name=scope.name)
+    _activation_summary(conv5)
+
+  # pool5
+  pool5 = tf.nn.max_pool(conv5, ksize=[1, 3, 3, 1],
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
     dim = 1
-    for d in pool2.get_shape()[1:].as_list():
+    for d in pool5.get_shape()[1:].as_list():
       dim *= d
-    reshape = tf.reshape(pool2, [FLAGS.batch_size, dim])
+    reshape = tf.reshape(pool5, [FLAGS.batch_size, dim])
 
     weights = _variable_with_weight_decay('weights', shape=[dim, 384],
                                           stddev=0.04, wd=0.004)
