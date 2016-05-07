@@ -25,6 +25,9 @@ from six.moves import urllib
 import tensorflow as tf
 
 import statefarm_input as statefarm_input
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.training import moving_averages
+import numpy as np
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -40,12 +43,26 @@ NUM_CLASSES = statefarm_input.NUM_CLASSES
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = statefarm_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = statefarm_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
-
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
+
+# Constants for resnet architecture
+FC_WEIGHT_STDDEV = 0.01
+FC_WEIGHT_DECAY = 0.00004
+CONV_WEIGHT_STDDEV = 0.1
+CONV_WEIGHT_DECAY = 0.00004
+BN_DECAY = 0.9997
+BN_EPSILON = 0.001
+RESNET_VARIABLES = 'resnet_variables'
+UPDATE_OPS_COLLECTION = 'resnet_update_ops' # must be grouped with training op
+MEAN_BGR = [
+    103.062623801, 
+    115.902882574,
+    123.151630838,
+    ]
 
 # If a model is trained with multiple GPU's prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -151,7 +168,6 @@ def inputs(eval_data):
   if eval_data:
     return statefarm_input.testing_inputs(data_dir=data_dir, batch_size=FLAGS.batch_size)
 
-
 def inference(images):
   """Build the Statefarm model.
   Args:
@@ -163,13 +179,7 @@ def inference(images):
   # tf.Variable() in order to share variables across multiple GPU training runs.
   # If we only ran this model on a single GPU, we could simplify this function
   # by replacing all instances of tf.get_variable() with tf.Variable().
-  #
 
-  # We adopt batch normalization (BN) right after each convolution 
-  # and before activation, following
-
-  # conv1: 7×7, 64, stride 2
-  # output size: 112×112
   with tf.variable_scope('conv1') as scope:
     kernel = _variable_with_weight_decay('weights', shape=[7, 7, 1, 64],
                                          stddev=1e-4, wd=0.0)
@@ -254,15 +264,17 @@ def inference(images):
   return softmax_linear
 
 
-def inference_res(x, is_training,
-              num_classes=1000,
+def inference_resnet(images, is_training,
+              num_classes=10,
               num_blocks=[3, 4, 6, 3],  # defaults to 50-layer network
               preprocess=True,
               bottleneck=True):
     # if preprocess is True, input should be RGB [0,1], otherwise BGR with mean
     # subtracted
-    if preprocess:
-        x = _preprocess(x)
+
+    x = images
+    #if preprocess:
+     #   x = _preprocess(x)
 
     is_training = tf.convert_to_tensor(is_training,
                                        dtype='bool',
@@ -289,7 +301,7 @@ def inference_res(x, is_training,
     # post-net
     x = tf.reduce_mean(x, reduction_indices=[1, 2], name="avg_pool")
     with tf.variable_scope('fc'):
-        logits = _fc(x, num_units_out=num_classes)
+        logits = _fc(x, num_units_out=NUM_CLASSES)
 
     return logits
 
@@ -304,7 +316,7 @@ def loss_res(logits, labels, batch_size=None, label_smoothing=0.1):
     if not batch_size:
         batch_size = FLAGS.batch_size
 
-    num_classes = logits.get_shape()[-1].value
+    num_classes = NUM_CLASSES
 
     # Reshape the labels into a dense Tensor of
     # shape [batch_size, num_classes].

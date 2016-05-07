@@ -83,7 +83,7 @@ def train(inputfile, validatefile):
     # Build a Graph that computes the logits predictions from the
     # inference model.
     #logits = statefarm.inference(images_placeholder)
-    logits = statefarm.inference_resnet(images_placeholder)
+    logits = statefarm.inference_resnet(images_placeholder, True)
     # Calculate loss.
     loss = statefarm.loss(logits, labels_placeholder)
 
