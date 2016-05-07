@@ -47,9 +47,10 @@ def do_eval(sess,
             ):
 
   # And run one epoch of eval.
-  true_count = 0  # Counts the number of correct predictions.
-  steps_per_epoch = 2560 // FLAGS.batch_size
-  num_examples = 2560
+  true_count_1 = 0  # Counts the number of correct predictions.
+  true_count_2 = 0  # Counts the number of correct predictions @ 2.
+  steps_per_epoch = 1
+  num_examples = 128
   for step in xrange(steps_per_epoch):
     images_val, labels_val = sess.run([images, labels])
     feed_dict = fill_feed_dict(images_placeholder,
@@ -57,18 +58,21 @@ def do_eval(sess,
                                images_val,
                                labels_val
                                )
-    true_count += sess.run(eval_op, feed_dict=feed_dict)
-  precision = true_count / num_examples
-  print('Validation: Num examples: %d  Num correct: %d  Precision @ 1: %0.04f' %
-        (num_examples, true_count, precision))
+    t1, t2 = sess.run(eval_op, feed_dict=feed_dict)
+    true_count_1 += t1
+    true_count_2 += t2
+  precision_at_1 = true_count_1 / num_examples
+  precision_at_2 = true_count_2 / num_examples
+  print('Validation: Num examples: %d  Num correct: %d  Precision @ 1: %0.04f  Precision @ 2: %0.04f' %
+        (num_examples, true_count_1, precision_at_1, precision_at_2))
 
-def train():
+def train(inputfile, validatefile):
   """Train Statefarm for a number of steps."""
   with tf.Graph().as_default():
 
     # Extract batches for training and testing
-    images_train, labels_train = statefarm.distorted_inputs()
-    #images_test, labels_test = statefarm.testing_inputs()
+    images_train, labels_train = statefarm.distorted_inputs(inputfile)
+    images_test, labels_test = statefarm.testing_inputs(validatefile)
 
     global_step = tf.Variable(0, trainable=False)
 
@@ -131,11 +135,11 @@ def train():
                              examples_per_sec, sec_per_batch))
 
       # Evaluate model on training set here
-      # if step % 100 == 0:
-      #   do_eval(sess, eval_op, images_placeholder, labels_placeholder,
-      #     images_test, labels_test)
+      if step % 100 == 0:
+        do_eval(sess, eval_op, images_placeholder, labels_placeholder,
+          images_test, labels_test)
         #summary_str = sess.run(summary_op)
-        # summary_writer.add_summary(summary_str, step)
+        #summary_writer.add_summary(summary_str, step)
 
       # Save the model checkpoint periodically.
       if step % 1000 == 0 or (step + 1) == FLAGS.max_steps:
@@ -144,10 +148,13 @@ def train():
 
 
 def main(argv=None):  # pylint: disable=unused-argument
-  if tf.gfile.Exists(FLAGS.train_dir):
-    tf.gfile.DeleteRecursively(FLAGS.train_dir)
-  tf.gfile.MakeDirs(FLAGS.train_dir)
-  train()
+  if len(argv) < 3:
+    print("Usage: python statefarm_train <input.txt> <validate.txt>")
+  else:
+    if tf.gfile.Exists(FLAGS.train_dir):
+      tf.gfile.DeleteRecursively(FLAGS.train_dir)
+    tf.gfile.MakeDirs(FLAGS.train_dir)
+    train(argv[1], argv[2])
 
 
 if __name__ == '__main__':
