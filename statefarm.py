@@ -240,7 +240,7 @@ def inference(images):
 
   # pool4
   pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool3')
 
   # conv4
   with tf.variable_scope('conv4') as scope:
@@ -256,7 +256,7 @@ def inference(images):
 
   # pool4
   pool4 = tf.nn.max_pool(conv4, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool4')
 
   # conv5
   with tf.variable_scope('conv5') as scope:
@@ -272,7 +272,7 @@ def inference(images):
 
   # pool5
   pool5 = tf.nn.max_pool(conv5, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool2')
+                         strides=[1, 2, 2, 1], padding='SAME', name='pool5')
 
   # local3
   with tf.variable_scope('local3') as scope:
