@@ -1,5 +1,6 @@
 from PIL import Image, ImageFilter
 import os, sys, glob
+import numpy as np
 
 # Change this according to location of project
 BASE_DIR = '/Users/Michael/Documents/School/4_Senior_Spring/Cos495/Final_Project/COS495-project'
@@ -38,6 +39,35 @@ def findEdgesUnlabeled(folder):
 			im = im.filter(ImageFilter.FIND_EDGES)
 			im.save(outfile, "JPEG")
 
+def cropLabeledPhotos(folder):
+	for i in range(0, 10):
+		for file in glob.glob("./images/thresh_imgs/" + folder + "/c" + str(i) + "/*.jpg"):
+			print file
+			outfile = file.replace('thresh_imgs', 'thresh_half_imgs')
+
+			# Cut off left half of image and pad with zeros
+			im = Image.open(file)
+			im_arr = np.array(im)
+			im_arr[0:75,0:40] = 0
+			im = Image.fromarray(im_arr.astype('uint8'))
+
+			im.save(outfile, "JPEG")
+
+def cropUnlabeledPhotos(folder, size):
+	for file in glob.glob("./images/imgs/" + folder + "/*.jpg"):
+		print file
+		outfile = file.replace('imgs', 'half_imgs')
+
+		# Cut off left half of image and pad with zeros
+		im = Image.open(file)
+		im_arr = np.array(im)
+		im_arr[0:480,0:320,0:3] = 0
+		im = Image.fromarray(im_arr.astype('uint8'))
+
+		# Compress
+		im.thumbnail(size, Image.ANTIALIAS)
+		im.save(outfile, "JPEG")
+
 def thresholdImages(folder):
 	for i in range(0, 10):
 		print i * 10, "percent done"
@@ -49,4 +79,4 @@ def thresholdImages(folder):
 			bw.save(outfile, "JPEG")
 
 if __name__ == '__main__':
-	thresholdImages('validate')
+	cropLabeledPhotos('train')

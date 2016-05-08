@@ -242,45 +242,14 @@ def inference(images):
   pool3 = tf.nn.max_pool(conv3, ksize=[1, 3, 3, 1],
                          strides=[1, 2, 2, 1], padding='SAME', name='pool3')
 
-  # conv4
-  with tf.variable_scope('conv4') as scope:
-    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
-                                         stddev=1e-4, wd=0.0)
-    conv = tf.nn.conv2d(pool3, kernel, [1, 1, 1, 1], padding='SAME')
-
-    # bn4 - add batch normalization before nonlinearity
-    bn4 = batch_norm(conv, 64)
-    
-    conv4 = tf.nn.relu(bn4, name=scope.name)
-    _activation_summary(conv4)
-
-  # pool4
-  pool4 = tf.nn.max_pool(conv4, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool4')
-
-  # conv5
-  with tf.variable_scope('conv5') as scope:
-    kernel = _variable_with_weight_decay('weights', shape=[5, 5, 64, 64],
-                                         stddev=1e-4, wd=0.0)
-    conv = tf.nn.conv2d(pool4, kernel, [1, 1, 1, 1], padding='SAME')
-
-    # bn5 - add batch normalization before nonlinearity
-    bn5 = batch_norm(conv, 64)
-    
-    conv5 = tf.nn.relu(bn5, name=scope.name)
-    _activation_summary(conv5)
-
-  # pool5
-  pool5 = tf.nn.max_pool(conv5, ksize=[1, 3, 3, 1],
-                         strides=[1, 2, 2, 1], padding='SAME', name='pool5')
 
   # local3
   with tf.variable_scope('local3') as scope:
     # Move everything into depth so we can perform a single matrix multiply.
     dim = 1
-    for d in pool5.get_shape()[1:].as_list():
+    for d in pool3.get_shape()[1:].as_list():
       dim *= d
-    reshape = tf.reshape(pool5, [FLAGS.batch_size, dim])
+    reshape = tf.reshape(pool3, [FLAGS.batch_size, dim])
 
     weights = _variable_with_weight_decay('weights', shape=[dim, 384],
                                           stddev=0.04, wd=0.004)
