@@ -151,9 +151,9 @@ def main(argv=None):  # pylint: disable=unused-argument
   if len(argv) < 3:
     print("Usage: python statefarm_train <input.txt> <validate.txt>")
   else:
-    if tf.gfile.Exists(FLAGS.train_dir):
-      tf.gfile.DeleteRecursively(FLAGS.train_dir)
-    tf.gfile.MakeDirs(FLAGS.train_dir)
+    #if tf.gfile.Exists(FLAGS.train_dir):
+    #  tf.gfile.DeleteRecursively(FLAGS.train_dir)
+    #tf.gfile.MakeDirs(FLAGS.train_dir)
     train(argv[1], argv[2])
 
 
