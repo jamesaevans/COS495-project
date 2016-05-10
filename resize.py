@@ -2,7 +2,7 @@ from PIL import Image, ImageFilter
 import os, sys, glob
 
 # Change this according to location of project
-BASE_DIR = '/Users/jaevans/Desktop/COS495-project'
+BASE_DIR = '/Users/ASun/COS495-project'
 os.chdir(BASE_DIR)
 
 def resizeLabeledImages(folder, size):
@@ -39,4 +39,4 @@ def findEdgesUnlabeled(folder):
 			im.save(outfile, "JPEG")
 
 if __name__ == '__main__':
-	findEdgesUnlabeled('test')
+	resizeUnlabeledImages('test', (100,100))

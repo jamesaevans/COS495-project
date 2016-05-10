@@ -3,14 +3,14 @@
 import glob, os, sys
 
 # Change this according to location of project
-BASE_DIR = '/Users/jaevans/Desktop/COS495-project'
+BASE_DIR = '/Users/ASun/COS495-project'
 os.chdir(BASE_DIR)
 
 if len(sys.argv) != 2:
 	print "Usage: python input_map.py <directory> > output.csv"
 elif sys.argv[1] == 'test':
 	folder = sys.argv[1]
-	for file in glob.glob("./edge_imgs/" + folder + "/*.jpg"):
+	for file in glob.glob("./small_imgs/" + folder + "/*.jpg"):
 		# Kind of hacky, but set a fake class for ease of input to tensorflow
 		print file + " " + str(0)
 else:

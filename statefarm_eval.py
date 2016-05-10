@@ -20,6 +20,7 @@ from __future__ import print_function
 from datetime import datetime
 import math
 import time
+import glob
 
 import numpy as np
 import tensorflow as tf
@@ -94,18 +95,23 @@ def eval_once(saver, summary_writer, top_k_op, summary_op):
     coord.request_stop()
     coord.join(threads, stop_grace_period_secs=10)
 
-def outputpredictions(saver, images_op, prob_op):
+def outputpredictions(saver, images_op, prob_op, path):
   with tf.Session() as sess:
-    ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-    if ckpt and ckpt.model_checkpoint_path:
-      # Restores from checkpoint
-      saver.restore(sess, ckpt.model_checkpoint_path)
-      # Assuming model_checkpoint_path looks something like:
-      #   /my-favorite-path/statefarm_train/model.ckpt-0,
-      # extract global_step from it.
-      global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-      print(global_step)
-    else:
+    #ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+    # if ckpt and ckpt.model_checkpoint_path:
+    #   # Restores from checkpoint
+    #   saver.restore(sess, ckpt.model_checkpoint_path)
+    #   # Assuming model_checkpoint_path looks something like:
+    #   #   /my-favorite-path/statefarm_train/model.ckpt-0,
+    #   # extract global_step from it.
+    #   global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+    #   print(global_step)
+    print(path)
+    try:
+      saver.restore(sess, path) 
+      driver_id = path.split('.')[3]
+      print(driver_id)
+    except IOError:
       print('No checkpoint file found')
       return
 
@@ -123,16 +129,17 @@ def outputpredictions(saver, images_op, prob_op):
       step = 0
 
       seenfiles = []
+      out_file = open(driver_id + '_test.txt', 'w')
       while len(seenfiles) < FLAGS.num_examples:
         filenames, pred = sess.run([images_op, prob_op])
         for i in range(128):
           filename = filenames[i].split('/')[-1]
           if filename not in seenfiles:
-            print('%s,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f' %
+            out_file.write('%s,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f,%0.04f\n' %
               (filename,pred[i][0], pred[i][1], pred[i][2], pred[i][3], pred[i][4], pred[i][5], pred[i][6], pred[i][7],
                 pred[i][8], pred[i][9]))
             seenfiles.append(filename)
-      print('|-----------------------------------|')
+      out_file.close()
 
     except Exception as e:  # pylint: disable=broad-except
       coord.request_stop(e)
@@ -140,7 +147,7 @@ def outputpredictions(saver, images_op, prob_op):
     coord.request_stop()
     coord.join(threads, stop_grace_period_secs=10)
 
-def predict(testfiles):
+def predict(testfiles, path):
   with tf.Graph().as_default():
     images,filenames = statefarm.unlabeled_inputs(testfiles)
     logits = statefarm.inference(images)
@@ -155,7 +162,7 @@ def predict(testfiles):
     # Build a Graph that computes the logits predictions from the
     # inference model.
     graph_def = tf.get_default_graph().as_graph_def()
-    outputpredictions(saver, filenames, probs)
+    outputpredictions(saver, filenames, probs, path)
 
 def evaluate():
   """Eval Statefarm for a number of steps."""
@@ -198,8 +205,9 @@ def main(argv=None):  # pylint: disable=unused-argument
     if tf.gfile.Exists(FLAGS.eval_dir):
       tf.gfile.DeleteRecursively(FLAGS.eval_dir)
     tf.gfile.MakeDirs(FLAGS.eval_dir)
-    predict(argv[1])
-
+    for file in glob.glob('./checkpoints/*-1000'):
+      predict(argv[1], file)
+      print(file + '  Done!')
 
 if __name__ == '__main__':
   tf.app.run()
